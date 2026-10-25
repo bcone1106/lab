@@ -1,0 +1,103 @@
+import { useState } from "react";
+import { Body1, Button, Input, Label } from "@fluentui/react-components";
+import { AddRegular, SubtractRegular } from "@fluentui/react-icons";
+import { useStyles } from "@/styles/QuantityStepper.styles";
+
+type QuantityStepperProps = {
+  id: string;
+  label: string;
+  /** null while the field is empty. */
+  value: number | null;
+  onChange: (value: number | null) => void;
+  /** Quiet help under the field, e.g. "Available: 12". */
+  hint?: string;
+  /** "counter": for counting things as you touch them - a big add button and a small minus one. */
+  variant?: "stepper" | "counter";
+};
+
+// A whole-number field for a thumb: big − and + buttons around a large numeric input (the numeric
+// keyboard comes up on phones).
+export function QuantityStepper({ id, label, value, onChange, hint, variant = "stepper" }: QuantityStepperProps) {
+  const styles = useStyles();
+  const current = value ?? 0;
+  // Keep text edits as typed so incomplete numbers remain empty instead of becoming zero.
+  const [typed, setTyped] = useState<string | null>(null);
+  // The typed text stands while it is what the value came from; a value set from outside replaces it
+  const showTyped = typed !== null && (value === null || Number(typed) === value);
+  const validInteger = (text: string) => /^-?\d+$/.test(text);
+  const step = (next: number) => {
+    setTyped(null);
+    onChange(next);
+  };
+
+  const input = (
+    <Input
+      id={id}
+      className={variant === "counter" ? styles.counterInput : styles.input}
+      size="large"
+      inputMode="numeric"
+      pattern="-?[0-9]*"
+      value={showTyped ? typed : value === null ? "" : String(value)}
+      onChange={(_, data) => {
+        setTyped(data.value);
+        onChange(validInteger(data.value) ? Number(data.value) : null);
+      }}
+    />
+  );
+
+  if (variant === "counter") {
+    return (
+      <div className={styles.root}>
+        <Label htmlFor={id} size="large">
+          {label}
+        </Label>
+        {input}
+        <div className={styles.counterRow}>
+          <Button
+            className={styles.add}
+            appearance="primary"
+            size="large"
+            aria-label="Increase"
+            onClick={() => step(current + 1)}
+          >
+            +1
+          </Button>
+          <Button
+            className={styles.minus}
+            size="large"
+            icon={<SubtractRegular />}
+            aria-label="Decrease"
+            onClick={() => step(current - 1)}
+          />
+        </div>
+        {hint && <Body1 className={styles.hint}>{hint}</Body1>}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.root}>
+      <Label htmlFor={id} size="large">
+        {label}
+      </Label>
+      <div className={styles.row}>
+        <Button
+          className={styles.step}
+          size="large"
+          icon={<SubtractRegular />}
+          aria-label="Decrease"
+          onClick={() => step(current - 1)}
+        />
+        {input}
+        <Button
+          className={styles.step}
+          size="large"
+          icon={<AddRegular />}
+          aria-label="Increase"
+          onClick={() => step(current + 1)}
+        />
+      </div>
+      {hint && <Body1 className={styles.hint}>{hint}</Body1>}
+    </div>
+  );
+}
