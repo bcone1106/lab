@@ -16,6 +16,8 @@ import {
   SkeletonItem,
 } from "@fluentui/react-components";
 import { ArrowLeftRegular } from "@fluentui/react-icons";
+import BarcodeScanDialog from "@/components/BarcodeScanDialog";
+import LinkedProductImage from "@/components/LinkedProductImage";
 import type { IColumn } from "@talxis/client-libraries";
 import { RecordDetailForm } from "@/components/RecordDetailForm";
 import { RecordFormDialog } from "@/components/RecordFormDialog";
@@ -26,6 +28,7 @@ import { useStyles } from "@/styles/WarehouseItemDetail.styles";
 import { servicePayload, serviceResult } from "@/utils/ServicePayload";
 import { errorText } from "@/utils/StockTransactions";
 import { toNumber } from "@/utils/RecordValues";
+import { Lab_productsService } from "@/generated/services/Lab_productsService";
 
 const transactionColumns: IColumn[] = [
   { name: "lab_name", displayName: "Name", dataType: "SingleLine.Text", isPrimary: true, visualSizeFactor: 240 },
@@ -104,6 +107,16 @@ export default function WarehouseItemDetailPage() {
       }));
       return result.data ?? [];
     },
+  });
+
+  const linkedProductId = item?._lab_productid_value;
+  const { data: linkedProduct, error: linkedProductError } = useQuery({
+    queryKey: ["linkedProduct", linkedProductId],
+    queryFn: async () => {
+      const result = await serviceResult(Lab_productsService.get(linkedProductId!));
+      return result.data;
+    },
+    enabled: !!linkedProductId,
   });
 
   const transactionRows = useMemo(
@@ -242,6 +255,11 @@ export default function WarehouseItemDetailPage() {
             <MessageBarBody>{errorText(transactionsError)}</MessageBarBody>
           </MessageBar>
         )}
+        {linkedProductError && (
+          <MessageBar intent="error">
+            <MessageBarBody>{errorText(linkedProductError)}</MessageBarBody>
+          </MessageBar>
+        )}
         {itemRecord && (
           <RecordDetailForm
             entityName="lab_warehouseitem"
@@ -249,6 +267,22 @@ export default function WarehouseItemDetailPage() {
             fields={itemFields}
             columnCount={3}
             title={item.lab_name ?? ""}
+            headerExtras={
+              <>
+                <BarcodeScanDialog
+                  itemId={id!}
+                  currentProductId={linkedProductId}
+                  onLinked={() => void queryClient.invalidateQueries()}
+                />
+                {linkedProduct && linkedProductId && (
+                  <div className={styles.inline} data-testid="linked-product-name">
+                    <LinkedProductImage productId={linkedProductId} />
+                    <Body1 className={styles.muted}>Linked product:</Body1>
+                    <Body1 className={styles.name}>{linkedProduct.lab_name}</Body1>
+                  </div>
+                )}
+              </>
+            }
             onBack={() => navigate("/items")}
             lookupRecords={{ lab_locationid: locationRecords }}
             onSave={(values) => updateItemMutation.mutateAsync(values)}
